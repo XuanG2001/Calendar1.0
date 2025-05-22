@@ -1,0 +1,63 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+:root {
+  --primary-color: #4285f4;
+  --secondary-color: #fbbc05;
+  --background-color: #f8f9fa;
+  --text-color: #202124;
+  --border-color: #dadce0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+.calendar-container {
+  flex: 2;
+  padding: 20px;
+  background-color: var(--background-color);
+  overflow-y: auto;
+}
+
+.chat-container {
+  flex: 1;
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .calendar-container, .chat-container {
+    flex: none;
+    height: 50vh;
+  }
+  
+  .chat-container {
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+} 
