@@ -2,6 +2,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { format, isBefore, isAfter, isSameDay } from 'date-fns';
 import { EventType, ApiResponse } from '../types';
+import { geocode } from './mapService';
 
 const API_KEY = process.env.REACT_APP_DOUBAN_API_KEY || '';
 const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'; // 豆包API地址
@@ -60,6 +61,11 @@ export const analyzeMessage = async (
              
           3. 如果无法确定合理的事件时长，请直接向用户提问，而不是创建事件。
           
+          4. 对于位置信息处理：
+             - 尽可能从用户输入中提取详细的位置信息
+             - 如果用户提到特定地点(如"公司"、"学校"等)，请记录该地点
+             - 尽量提取详细的地址，这样系统可以在地图上准确标记
+          
           请解析用户输入并提取出事件信息，包括事件标题、开始时间、结束时间、地点和描述。
           如果用户只提供了时间但没有日期，请假设是今天或用户之前选择的日期：${format(selectedDate, 'yyyy-MM-dd')}。
           
@@ -109,12 +115,27 @@ export const analyzeMessage = async (
       };
     }
     
-    // 处理事件冲突
+    // 处理事件冲突和地理编码
     if (parsedResponse.events && parsedResponse.events.length > 0) {
       for (const event of parsedResponse.events) {
         // 为每个事件添加ID
         event.id = uuidv4();
         
+        // 如果有位置信息，获取地理坐标
+        if (event.location) {
+          try {
+            console.log('正在获取位置坐标:', event.location);
+            const coordinates = await geocode(event.location);
+            event.coordinates = {
+              longitude: coordinates[0],
+              latitude: coordinates[1]
+            };
+            console.log('成功获取坐标:', event.coordinates);
+          } catch (error) {
+            console.error('获取位置坐标失败:', error);
+          }
+        }
+
         // 检查冲突
         const conflicts = checkEventConflicts(event, existingEvents);
         

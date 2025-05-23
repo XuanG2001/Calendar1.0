@@ -6,6 +6,11 @@ export interface EventType {
   end: Date;
   color?: string;
   location?: string;
+  coordinates?: {
+    longitude: number;
+    latitude: number;
+  };
+  address?: string; // 格式化地址
 }
 
 export interface Message {
@@ -20,4 +25,13 @@ export interface ApiResponse {
   message?: string;
   events?: EventType[];
   suggestions?: string[];
+}
+
+// 添加地图相关类型
+export interface RouteInfo {
+  distance?: number; // 距离（米）
+  duration?: number; // 时间（秒）
+  routeType: 'walking' | 'transit' | 'driving';
+  steps?: string[];
+  polyline?: [number, number][]; // 路径点坐标
 } 
