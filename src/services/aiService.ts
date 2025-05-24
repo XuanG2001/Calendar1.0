@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { format, isBefore, isAfter, isSameDay } from 'date-fns';
+import { format, isBefore, isAfter, isSameDay, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 import { EventType, ApiResponse } from '../types';
 import { geocode } from './mapService';
 
@@ -32,6 +33,36 @@ const checkEventConflicts = (newEvent: EventType, existingEvents: EventType[]): 
   return conflicts;
 };
 
+// 获取指定日期范围内的事件
+const getEventsInRange = (events: EventType[], start: Date, end: Date): EventType[] => {
+  return events.filter(event => {
+    const eventStart = new Date(event.start);
+    return isWithinInterval(eventStart, { start, end });
+  });
+};
+
+// 格式化事件列表为可读文本
+const formatEventsToText = (events: EventType[]): string => {
+  // 过滤掉无效事件
+  const validEvents = events.filter(event => 
+    event && event.start && event.end && event.title
+  );
+
+  if (validEvents.length === 0) {
+    return '暂无日程安排';
+  }
+
+  return validEvents
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .map(event => {
+      const startTime = format(new Date(event.start), 'HH:mm', { locale: zhCN });
+      const endTime = format(new Date(event.end), 'HH:mm', { locale: zhCN });
+      const location = event.location ? `在${event.location}` : '';
+      return `${startTime}-${endTime} ${event.title}${location}`;
+    })
+    .join('\n');
+};
+
 // 分析用户消息并提取事件信息
 export const analyzeMessage = async (
   message: string,
@@ -39,52 +70,59 @@ export const analyzeMessage = async (
   selectedDate: Date
 ): Promise<ApiResponse> => {
   try {
+    // 构建系统提示
+    const systemPrompt = `你是一个智能的日历助手，可以帮助用户安排和查询日程。当前日期是${format(new Date(), 'yyyy-MM-dd')}。
+
+【重要提示】：
+1. 你可以处理两种类型的请求：
+   A. 日程查询：当用户询问某个时间段的安排时
+   B. 日程创建：当用户要创建新的日程时
+
+2. 对于日程查询：
+   - 理解用户的时间范围（今天、明天、本周等）
+   - 返回该时间范围内的所有日程安排
+   - 如果没有安排，明确告知用户
+
+3. 对于日程创建：
+   - 当用户提供的信息不完整时，请提出问题而不是做出假设
+   - 对于常见活动使用合理的默认持续时间
+   - 提取并记录位置信息以便在地图上显示
+
+4. 回复格式：
+   A. 对于日程查询：
+   {
+     "success": true,
+     "message": "为您找到以下安排：",
+     "type": "query",
+     "queryRange": {
+       "start": "2024-01-20T00:00:00",
+       "end": "2024-01-20T23:59:59"
+     }
+   }
+
+   B. 对于日程创建：
+   {
+     "success": true,
+     "message": "已添加日程",
+     "type": "create",
+     "events": [{
+       "title": "事件标题",
+       "start": "2024-01-20T14:00:00",
+       "end": "2024-01-20T15:00:00",
+       "location": "地点",
+       "description": "描述"
+     }]
+   }
+
+请分析用户输入，判断是查询还是创建请求，并按照相应格式返回响应。`;
+
     // 构建请求体
     const requestBody = {
-      model: 'doubao-1-5-thinking-pro-m-250428', // 使用豆包模型
+      model: 'doubao-1-5-thinking-pro-m-250428',
       messages: [
         {
           role: 'system',
-          content: `你是一个智能的日历助手，可以帮助用户安排日程。当前日期是${format(new Date(), 'yyyy-MM-dd')}。
-          
-          【重要提示】：
-          1. 当用户提供的信息不完整时，请提出问题而不是做出假设。例如：
-             - 如果用户没有提供结束时间，请询问事件持续多长时间或何时结束
-             - 如果用户的时间描述模糊，请要求澄清
-             - 永远不要自动安排超过4小时的事件，除非用户明确指定
-             
-          2. 对于常见活动类型，使用合理的默认持续时间：
-             - 会议：1-2小时
-             - 自习/学习：2小时
-             - 用餐：1-1.5小时
-             - 运动：1-2小时
-             
-          3. 如果无法确定合理的事件时长，请直接向用户提问，而不是创建事件。
-          
-          4. 对于位置信息处理：
-             - 尽可能从用户输入中提取详细的位置信息
-             - 如果用户提到特定地点(如"公司"、"学校"等)，请记录该地点
-             - 尽量提取详细的地址，这样系统可以在地图上准确标记
-          
-          请解析用户输入并提取出事件信息，包括事件标题、开始时间、结束时间、地点和描述。
-          如果用户只提供了时间但没有日期，请假设是今天或用户之前选择的日期：${format(selectedDate, 'yyyy-MM-dd')}。
-          
-          回复格式为JSON，包含以下字段：
-          {
-            "success": true/false,
-            "message": "对用户的回复",
-            "events": [
-              {
-                "title": "事件标题",
-                "start": "2023-08-15T14:00:00",
-                "end": "2023-08-15T15:00:00",
-                "location": "地点（可选）",
-                "description": "描述（可选）"
-              }
-            ]
-          }
-          
-          如果需要向用户提问获取更多信息，请设置success为false，不提供events字段，只在message中提出你的问题。`
+          content: systemPrompt
         },
         {
           role: 'user',
@@ -111,17 +149,29 @@ export const analyzeMessage = async (
       console.error('解析AI响应JSON失败:', error);
       return {
         success: false,
-        message: '抱歉，我无法理解您的请求。请尝试更加明确地描述您的日程安排。'
+        message: '抱歉，我无法理解您的请求。请尝试更清晰地描述。'
       };
     }
     
-    // 处理事件冲突和地理编码
-    if (parsedResponse.events && parsedResponse.events.length > 0) {
+    // 处理查询请求
+    if (parsedResponse.type === 'query' && parsedResponse.queryRange) {
+      const { start, end } = parsedResponse.queryRange;
+      const eventsInRange = getEventsInRange(
+        existingEvents,
+        parseISO(start),
+        parseISO(end)
+      );
+      
+      const formattedEvents = formatEventsToText(eventsInRange);
+      parsedResponse.message = formattedEvents; // 直接使用格式化后的文本作为消息
+      return parsedResponse;
+    }
+    
+    // 处理创建请求
+    if (parsedResponse.type === 'create' && parsedResponse.events) {
       for (const event of parsedResponse.events) {
-        // 为每个事件添加ID
         event.id = uuidv4();
         
-        // 如果有位置信息，获取地理坐标
         if (event.location) {
           try {
             console.log('正在获取位置坐标:', event.location);
@@ -136,7 +186,6 @@ export const analyzeMessage = async (
           }
         }
 
-        // 检查冲突
         const conflicts = checkEventConflicts(event, existingEvents);
         
         if (conflicts.length > 0) {

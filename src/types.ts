@@ -25,6 +25,11 @@ export interface ApiResponse {
   message?: string;
   events?: EventType[];
   suggestions?: string[];
+  type?: 'query' | 'create';
+  queryRange?: {
+    start: string;
+    end: string;
+  };
 }
 
 // 添加地图相关类型

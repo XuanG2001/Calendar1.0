@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EventType } from '../types';
 import { format } from 'date-fns';
 import './MapView.css';
+import RoutePlanPanel from './RoutePlanPanel';
 
 interface MapViewProps {
   events: EventType[];
@@ -23,6 +24,7 @@ const MapView: React.FC<MapViewProps> = ({ events, onEventClick }) => {
   const [map, setMap] = useState<any>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [infoWindow, setInfoWindow] = useState<any>(null);
+  const [routePolyline, setRoutePolyline] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -222,9 +224,33 @@ const MapView: React.FC<MapViewProps> = ({ events, onEventClick }) => {
     }
   }, [map, events, infoWindow]);
 
+  const handleShowRoute = (polyline: [number, number][]) => {
+    // 清除已有的路线
+    if (routePolyline) {
+      routePolyline.setMap(null);
+    }
+
+    // 创建新的路线
+    if (map && polyline.length > 0) {
+      const path = polyline.map(([lng, lat]) => new window.AMap.LngLat(lng, lat));
+      const newPolyline = new window.AMap.Polyline({
+        path: path,
+        strokeColor: '#1890FF',
+        strokeWeight: 6,
+        strokeOpacity: 0.8
+      });
+      newPolyline.setMap(map);
+      setRoutePolyline(newPolyline);
+
+      // 调整地图视野以显示整个路线
+      map.setFitView([newPolyline]);
+    }
+  };
+
   return (
     <div className="map-container">
       <div ref={mapRef} className="map-view" />
+      <RoutePlanPanel events={events} onShowRoute={handleShowRoute} />
       {isLoading && (
         <div className="map-loading">
           <p>地图加载中...</p>

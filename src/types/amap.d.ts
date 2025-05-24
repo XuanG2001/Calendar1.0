@@ -33,7 +33,7 @@ declare namespace AMap {
 
   interface MapOptions {
     zoom?: number;
-    center?: [number, number];
+    center?: LngLat;
     viewMode?: '2D' | '3D';
     pitch?: number;
     mapStyle?: string;
@@ -81,6 +81,42 @@ declare namespace AMap {
     getWidth(): number;
     getHeight(): number;
   }
+
+  namespace DrivingPolicy {
+    const LEAST_TIME: number;
+  }
+
+  namespace TransferPolicy {
+    const LEAST_TIME: number;
+  }
+
+  interface SearchCallback {
+    (status: string, result: any): void;
+  }
+
+  interface RouteOptions {
+    map: Map | null;
+    hideMarkers?: boolean;
+    policy?: number;
+    city?: string;
+  }
+
+  interface Walking {
+    constructor(options: RouteOptions);
+    search(origin: LngLat, destination: LngLat, callback: SearchCallback): void;
+  }
+
+  interface Driving {
+    constructor(options: RouteOptions);
+    search(origin: LngLat, destination: LngLat, callback: SearchCallback): void;
+  }
+
+  interface Transfer {
+    constructor(options: RouteOptions);
+    search(origin: LngLat, destination: LngLat, callback: SearchCallback): void;
+  }
+
+  function plugin(name: string, callback: () => void): void;
 }
 
 declare global {

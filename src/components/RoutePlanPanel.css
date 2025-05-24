@@ -1,0 +1,79 @@
+.route-plan-panel {
+  width: 400px;
+  height: 100%;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  background: white;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.route-plan-loading {
+  width: 400px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+}
+
+.no-routes {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.route-segment {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.segment-header {
+  margin-bottom: 12px;
+}
+
+.segment-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1890ff;
+  margin-bottom: 4px;
+}
+
+.segment-locations {
+  color: #666;
+  font-size: 14px;
+}
+
+.segment-suggestion {
+  margin: 12px 0;
+  padding: 8px;
+  background: #f6f6f6;
+  border-radius: 4px;
+}
+
+.route-info {
+  padding: 12px 0;
+}
+
+.route-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.route-steps {
+  font-size: 13px;
+  color: #666;
+}
+
+.route-step {
+  padding: 4px 0;
+  border-bottom: 1px dashed #f0f0f0;
+}
+
+.route-step:last-child {
+  border-bottom: none;
+} 
