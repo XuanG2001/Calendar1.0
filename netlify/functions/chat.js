@@ -1,8 +1,9 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
 
 // 重试配置
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1秒
+const TIMEOUT = 8000; // 8秒，留出余量给 Netlify Functions
 
 // 延迟函数
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -10,18 +11,27 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 // 带重试的 API 调用
 const retryableApiCall = async (requestBody, apiKey, attempt = 1) => {
   try {
-    const response = await axios.post(
-      'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
-      requestBody,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        timeout: 30000
-      }
-    );
-    return response;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { data };
   } catch (error) {
     if (attempt < MAX_RETRIES) {
       console.log(`第 ${attempt} 次请求失败，${RETRY_DELAY/1000}秒后重试...`);
@@ -40,7 +50,7 @@ exports.handler = async function(event, context) {
         statusCode: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           'Access-Control-Allow-Methods': 'POST, OPTIONS'
         }
       };
@@ -100,9 +110,24 @@ exports.handler = async function(event, context) {
   } catch (error) {
     console.error('AI 服务错误:', error);
     
-    // API 响应错误
-    if (error.response) {
-      const status = error.response.status;
+    // 请求超时
+    if (error.name === 'AbortError') {
+      return {
+        statusCode: 504,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          error: '请求超时',
+          message: '服务器响应时间过长，请稍后重试'
+        })
+      };
+    }
+
+    // HTTP 错误
+    if (error.message.includes('HTTP error!')) {
+      const status = parseInt(error.message.match(/status: (\d+)/)[1]);
       const errorMessage = {
         502: 'AI 服务暂时不可用，请稍后重试',
         429: '请求过于频繁，请稍后重试',
@@ -118,23 +143,7 @@ exports.handler = async function(event, context) {
         },
         body: JSON.stringify({
           error: errorMessage,
-          status: status,
-          details: error.response.data
-        })
-      };
-    }
-    
-    // 请求超时
-    if (error.code === 'ECONNABORTED') {
-      return {
-        statusCode: 504,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          error: '请求超时',
-          message: '服务器响应时间过长，请稍后重试'
+          status: status
         })
       };
     }
@@ -163,8 +172,7 @@ exports.handler = async function(event, context) {
       },
       body: JSON.stringify({
         error: '服务器内部错误',
-        message: error.message,
-        code: error.code
+        message: error.message
       })
     };
   }
