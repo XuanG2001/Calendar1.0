@@ -131,13 +131,8 @@ export const analyzeMessage = async (
       ]
     };
     
-    // 发送请求到豆包API
-    const response = await axios.post(API_URL, requestBody, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      }
-    });
+    // 使用 Netlify Function 代理请求
+    const response = await axios.post('/api/chat', requestBody);
     
     // 解析响应
     const aiResponse = response.data.choices[0].message.content;
@@ -163,7 +158,7 @@ export const analyzeMessage = async (
       );
       
       const formattedEvents = formatEventsToText(eventsInRange);
-      parsedResponse.message = formattedEvents; // 直接使用格式化后的文本作为消息
+      parsedResponse.message = formattedEvents;
       return parsedResponse;
     }
     
@@ -205,7 +200,7 @@ export const analyzeMessage = async (
     console.error('AI服务请求失败:', error);
     return {
       success: false,
-      message: '抱歉，服务暂时不可用。请稍后再试。'
+      message: '抱歉，服务暂时不可用，请稍后再试。'
     };
   }
 }; 
