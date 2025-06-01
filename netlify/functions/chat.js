@@ -14,6 +14,8 @@ const retryableApiCall = async (requestBody, apiKey, attempt = 1) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
 
+    console.log(`尝试第 ${attempt} 次调用 API...`);
+    
     const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
       method: 'POST',
       headers: {
@@ -26,13 +28,20 @@ const retryableApiCall = async (requestBody, apiKey, attempt = 1) => {
 
     clearTimeout(timeoutId);
 
+    // 记录响应状态
+    console.log(`API 响应状态: ${response.status}`);
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`API 错误响应: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
 
     const data = await response.json();
     return { data };
   } catch (error) {
+    console.error(`API 调用错误:`, error);
+    
     if (attempt < MAX_RETRIES) {
       console.log(`第 ${attempt} 次请求失败，${RETRY_DELAY/1000}秒后重试...`);
       await delay(RETRY_DELAY);
@@ -82,6 +91,7 @@ exports.handler = async function(event, context) {
     let requestBody;
     try {
       requestBody = JSON.parse(event.body);
+      console.log('请求体:', JSON.stringify(requestBody, null, 2));
     } catch (error) {
       return {
         statusCode: 400,
@@ -128,6 +138,10 @@ exports.handler = async function(event, context) {
     // HTTP 错误
     if (error.message.includes('HTTP error!')) {
       const status = parseInt(error.message.match(/status: (\d+)/)[1]);
+      const errorBody = error.message.split('body: ')[1];
+      
+      console.error(`HTTP 错误状态码: ${status}, 错误信息: ${errorBody}`);
+      
       const errorMessage = {
         502: 'AI 服务暂时不可用，请稍后重试',
         429: '请求过于频繁，请稍后重试',
@@ -143,7 +157,8 @@ exports.handler = async function(event, context) {
         },
         body: JSON.stringify({
           error: errorMessage,
-          status: status
+          status: status,
+          details: errorBody
         })
       };
     }
