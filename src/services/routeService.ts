@@ -10,26 +10,10 @@ export const calculateRoute = async (
   type: 'walking' | 'driving' | 'transit'
 ): Promise<RouteInfo> => {
   try {
-    // 构建路径规划 API URL
-    const baseUrl = 'https://restapi.amap.com/v3/direction';
     const originStr = `${origin.longitude},${origin.latitude}`;
     const destinationStr = `${destination.longitude},${destination.latitude}`;
     
-    let url: string;
-    switch (type) {
-      case 'walking':
-        url = `${baseUrl}/walking?origin=${originStr}&destination=${destinationStr}&key=${API_KEY}`;
-        break;
-      case 'driving':
-        url = `${baseUrl}/driving?origin=${originStr}&destination=${destinationStr}&key=${API_KEY}&strategy=0&extensions=base`;
-        break;
-      case 'transit':
-        url = `${baseUrl}/transit/integrated?origin=${originStr}&destination=${destinationStr}&key=${API_KEY}&city=北京&strategy=0&extensions=base`;
-        break;
-      default:
-        throw new Error('无效的路径规划类型');
-    }
-
+    const url = `/.netlify/functions/route?type=${type}&origin=${originStr}&destination=${destinationStr}`;
     const response = await fetch(url);
     const data = await response.json();
 

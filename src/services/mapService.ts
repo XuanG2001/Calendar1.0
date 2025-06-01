@@ -47,18 +47,13 @@ const ensureMapLoaded = async (): Promise<void> => {
 // 地理编码服务
 export const geocode = async (address: string): Promise<[number, number]> => {
   try {
-    // 构建地理编码 API URL，添加城市参数
-    const url = `https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(address)}&city=北京&key=${API_KEY}&output=JSON`;
-    
-    const response = await fetch(url);
+    const response = await fetch(`/.netlify/functions/geocode?type=geo&address=${encodeURIComponent(address)}`);
     const data = await response.json();
     
     if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
-      // 获取第一个结果的经纬度
       const location = data.geocodes[0].location;
       const [longitude, latitude] = location.split(',').map(Number);
       
-      // 验证坐标有效性
       if (isNaN(longitude) || isNaN(latitude)) {
         throw new Error(`无效的坐标值: ${location}`);
       }
@@ -79,10 +74,7 @@ export const geocode = async (address: string): Promise<[number, number]> => {
 // 逆地理编码服务
 export const reverseGeocode = async (longitude: number, latitude: number): Promise<string> => {
   try {
-    // 构建逆地理编码 API URL
-    const url = `https://restapi.amap.com/v3/geocode/regeo?location=${longitude},${latitude}&key=${API_KEY}`;
-    
-    const response = await fetch(url);
+    const response = await fetch(`/.netlify/functions/geocode?type=regeo&longitude=${longitude}&latitude=${latitude}`);
     const data = await response.json();
     
     if (data.status === '1' && data.regeocode) {
