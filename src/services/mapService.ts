@@ -1,92 +1,71 @@
 import AMapLoader from '@amap/amap-jsapi-loader';
 
-// 高德地图 Web 服务 API 密钥
-const API_KEY = '4afe94fd9ff07c2b19cb4e291e4613b5';
+// 地图实例
+let map: any = null;
 
-// 声明全局类型
-declare global {
-  interface Window {
-    AMap: any;
-    _AMapSecurityConfig: {
-      securityJsCode: string;
-    };
-  }
-}
-
-// 确保地图脚本已加载
-const ensureMapLoaded = async (): Promise<void> => {
+// 初始化地图
+export const initMap = async (container: string) => {
   try {
-    // 如果已经加载完成且 Geocoder 存在，直接返回
-    if (window.AMap && window.AMap.Geocoder) {
-      return;
-    }
-
-    // 设置安全密钥
-    window._AMapSecurityConfig = {
-      securityJsCode: '3dbda37e7510f62f15966d0b14c985d5'
-    };
-
-    // 使用 AMapLoader 加载地图
-    await AMapLoader.load({
-      key: API_KEY,
+    const AMap = await AMapLoader.load({
+      key: '4afe94fd9ff07c2b19cb4e291e4613b5', // JS API 密钥
       version: '2.0',
-      plugins: ['AMap.Geocoder']
+      plugins: ['AMap.Geocoder', 'AMap.Marker']
     });
 
-    if (!window.AMap || !window.AMap.Geocoder) {
-      throw new Error('地图插件加载失败');
-    }
+    map = new AMap.Map(container, {
+      zoom: 11,
+      center: [116.397428, 39.90923],
+    });
 
-    console.log('地图 Geocoder 插件加载完成');
+    return map;
   } catch (error) {
     console.error('地图初始化失败:', error);
-    throw new Error('地图初始化失败：' + (error instanceof Error ? error.message : '未知错误'));
+    throw new Error('地图初始化失败');
   }
 };
 
-// 地理编码服务
+// 获取地图实例
+export const getMap = () => map;
+
+// 地理编码
 export const geocode = async (address: string): Promise<[number, number]> => {
   try {
     const response = await fetch(`/.netlify/functions/geocode?type=geo&address=${encodeURIComponent(address)}`);
     const data = await response.json();
-    
-    if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
-      const location = data.geocodes[0].location;
-      const [longitude, latitude] = location.split(',').map(Number);
-      
-      if (isNaN(longitude) || isNaN(latitude)) {
-        throw new Error(`无效的坐标值: ${location}`);
-      }
-      
-      console.log(`地理编码成功: ${address} => [${longitude}, ${latitude}]`);
-      console.log('完整地址:', data.geocodes[0].formatted_address);
-      return [longitude, latitude];
-    } else {
-      console.error('地理编码失败:', data);
-      throw new Error(`无法获取地址 "${address}" 的坐标`);
+
+    if (data.error) {
+      throw new Error(data.error);
     }
+
+    if (!data.geocodes || data.geocodes.length === 0) {
+      throw new Error(`无法获取地址'${address}'的坐标`);
+    }
+
+    const location = data.geocodes[0].location.split(',');
+    return [parseFloat(location[0]), parseFloat(location[1])];
   } catch (error) {
-    console.error('地理编码服务错误:', error);
+    console.error('地理编码失败:', error);
     throw error;
   }
 };
 
-// 逆地理编码服务
+// 逆地理编码
 export const reverseGeocode = async (longitude: number, latitude: number): Promise<string> => {
   try {
     const response = await fetch(`/.netlify/functions/geocode?type=regeo&longitude=${longitude}&latitude=${latitude}`);
     const data = await response.json();
-    
-    if (data.status === '1' && data.regeocode) {
-      const address = data.regeocode.formatted_address;
-      console.log(`逆地理编码成功: [${longitude}, ${latitude}] => ${address}`);
-      return address;
-    } else {
-      console.error('逆地理编码失败:', data);
-      throw new Error(`无法获取坐标 [${longitude}, ${latitude}] 的地址`);
+
+    if (data.error) {
+      throw new Error(data.error);
     }
+
+    if (!data.regeocode) {
+      throw new Error('无法获取该坐标的地址信息');
+    }
+
+    return data.regeocode.formatted_address;
   } catch (error) {
-    console.error('逆地理编码服务错误:', error);
+    console.error('逆地理编码失败:', error);
     throw error;
   }
 }; 

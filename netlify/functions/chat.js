@@ -6,7 +6,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 405,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ error: '只支持 POST 请求' })
       };
@@ -17,7 +18,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 500,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ error: '未配置 VOLCES_API_KEY' })
       };
@@ -30,9 +32,13 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 400,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: '无效的请求体格式' })
+        body: JSON.stringify({ 
+          error: '无效的请求体格式',
+          details: error.message 
+        })
       };
     }
 
@@ -43,30 +49,65 @@ exports.handler = async function(event, context) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${API_KEY}`
-        }
+        },
+        timeout: 30000 // 设置30秒超时
       }
     );
 
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify(response.data)
     };
   } catch (error) {
     console.error('AI 服务错误:', error);
     
-    // 检查是否是 API 响应错误
+    // API 响应错误
     if (error.response) {
       return {
         statusCode: error.response.status,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
           error: '调用 AI 服务失败',
-          details: error.response.data
+          status: error.response.status,
+          details: error.response.data,
+          message: error.message
+        })
+      };
+    }
+    
+    // 请求超时
+    if (error.code === 'ECONNABORTED') {
+      return {
+        statusCode: 504,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          error: '请求超时',
+          message: '服务器响应时间过长，请稍后重试'
+        })
+      };
+    }
+
+    // 网络错误
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      return {
+        statusCode: 503,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          error: '服务暂时不可用',
+          message: '无法连接到 AI 服务器，请稍后重试'
         })
       };
     }
@@ -75,11 +116,13 @@ exports.handler = async function(event, context) {
     return {
       statusCode: 500,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({
         error: '服务器内部错误',
-        message: error.message
+        message: error.message,
+        code: error.code
       })
     };
   }

@@ -132,10 +132,26 @@ export const analyzeMessage = async (
     };
     
     // 使用 Netlify Function 代理请求
-    const response = await axios.post('/.netlify/functions/chat', requestBody);
+    const response = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('无效的 AI 响应格式');
+    }
     
     // 解析响应
-    const aiResponse = response.data.choices[0].message.content;
+    const aiResponse = data.choices[0].message.content;
     let parsedResponse: ApiResponse;
     
     try {
