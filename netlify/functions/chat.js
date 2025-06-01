@@ -8,6 +8,14 @@ const TIMEOUT = 8000; // 8秒，留出余量给 Netlify Functions
 // 延迟函数
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// CORS 头部
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400', // 24 小时
+};
+
 // 带重试的 API 调用
 const retryableApiCall = async (requestBody, apiKey, attempt = 1) => {
   try {
@@ -52,25 +60,21 @@ const retryableApiCall = async (requestBody, apiKey, attempt = 1) => {
 };
 
 exports.handler = async function(event, context) {
-  try {
-    // 处理预检请求
-    if (event.httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        }
-      };
-    }
+  // 处理预检请求
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204, // No Content
+      headers: corsHeaders
+    };
+  }
 
+  try {
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ error: '只支持 POST 请求' })
       };
@@ -81,8 +85,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 500,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ error: '未配置 VOLCES_API_KEY' })
       };
@@ -96,8 +100,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 400,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
           error: '无效的请求体格式',
@@ -112,8 +116,8 @@ exports.handler = async function(event, context) {
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        ...corsHeaders,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(response.data)
     };
@@ -125,8 +129,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 504,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           error: '请求超时',
@@ -152,8 +156,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: status,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           error: errorMessage,
@@ -168,8 +172,8 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 503,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           error: '服务暂时不可用',
@@ -182,8 +186,8 @@ exports.handler = async function(event, context) {
     return {
       statusCode: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        ...corsHeaders,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         error: '服务器内部错误',
