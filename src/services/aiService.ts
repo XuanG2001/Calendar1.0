@@ -132,7 +132,7 @@ export const analyzeMessage = async (
     };
     
     // 使用 Netlify Function 代理请求
-    const response = await axios.post('/api/chat', requestBody);
+    const response = await axios.post('/.netlify/functions/chat', requestBody);
     
     // 解析响应
     const aiResponse = response.data.choices[0].message.content;
