@@ -155,12 +155,18 @@ export const analyzeMessage = async (
     let parsedResponse: ApiResponse;
     
     try {
-      parsedResponse = JSON.parse(aiResponse);
+      // 尝试清理和解析 JSON
+      const cleanedResponse = aiResponse.trim()
+        .replace(/^```json\s*/, '') // 移除可能的 JSON 代码块标记
+        .replace(/```\s*$/, '')     // 移除结尾的代码块标记
+        .trim();
+      parsedResponse = JSON.parse(cleanedResponse);
     } catch (error) {
       console.error('解析AI响应JSON失败:', error);
+      console.log('原始响应:', aiResponse);
       return {
         success: false,
-        message: '抱歉，我无法理解您的请求。请尝试更清晰地描述。'
+        message: '抱歉，我暂时无法理解您的请求。请尝试用更简单的方式描述，比如"查看今天的日程"或"添加一个会议"。'
       };
     }
     
