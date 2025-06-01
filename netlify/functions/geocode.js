@@ -15,6 +15,18 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // 处理预检请求
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS'
+        }
+      };
+    }
+
     // 解析请求参数
     const params = event.queryStringParameters;
     const { type, address, longitude, latitude } = params;
